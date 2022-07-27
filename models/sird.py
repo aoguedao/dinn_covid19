@@ -11,6 +11,7 @@ sns.set_theme(style="darkgrid")
 
 # dde.config.real.set_float64()
 
+
 def sird_model(
     t,
     N,
@@ -99,7 +100,7 @@ def dinn(data_t, data_y, N):
         anchors=data_t,
     )
     
-    net = dde.nn.FNN([1] + [32] * 3 + [4], "relu", "Glorot uniform")
+    net = dde.nn.FNN([1] + [128] * 3 + [4], "relu", "Glorot uniform")
     
     def feature_transform(t):
         t = t / data_t[-1, 0]
@@ -112,7 +113,7 @@ def dinn(data_t, data_y, N):
     net.apply_feature_transform(feature_transform)
     # net.apply_output_transform(output_transform)
 
-    iterations = 5000
+    iterations = 50000
     model = dde.Model(data, net)
     model.compile(
         "adam",
@@ -127,37 +128,36 @@ def dinn(data_t, data_y, N):
     )
     losshistory, train_state = model.train(
         iterations=iterations,
-        display_every=1000,
+        display_every=10000,
         callbacks=[variable]
       )
     # dde.saveplot(losshistory, train_state, issave=True, isplot=True)
     return model, variable
 
 
-def plot(N, beta, omega, gamma):
-
-    names = list("SIRD")
-
-    t = np.arange(0, 366, 7)[:, np.newaxis]
-    y = sird_model(np.ravel(t), N, beta, omega,  gamma)
-    data_real = (
-        pd.DataFrame(y, columns=names, index=t.ravel())
-        .rename_axis("time")
-        .reset_index()
-        .melt(id_vars="time", var_name="status", value_name="population")
+def error(parameters_real, parameters_pred):
+    parameter_names = [
+        "beta",
+        "omega",
+        "gamma",
+    ]
+    errors = (
+        pd.DataFrame(
+            {
+                "real": parameters_real,
+                "predicted": parameters_pred
+            },
+            index=parameter_names
+        )
+        .assign(
+            relative_error=lambda x: (x["real"] - x["predicted"]).abs() / x["real"]
+        )
     )
+    return errors
 
-    model, variable = dinn(t, y, N)
-    
-    full_t = np.arange(0, 366)[:, np.newaxis]
-    y_pred = model.predict(full_t)
-    data_pred = (
-        pd.DataFrame(y_pred, columns=names, index=full_t.ravel())
-        .rename_axis("time")
-        .reset_index()
-        .melt(id_vars="time", var_name="status", value_name="population")
-)
-    sns.set(rc={"figure.facecolor":"white"})
+
+def plot(data_pred, data_real):
+
     g = sns.relplot(
         data=data_pred,
         x="time",
@@ -176,7 +176,6 @@ def plot(N, beta, omega, gamma):
         legend=False
     )
 
-
     (
         g.set_axis_labels("Time", "Population")
         .set_titles("Zone {row_name}")
@@ -188,10 +187,43 @@ def plot(N, beta, omega, gamma):
     g.fig.suptitle(f"SIRD model estimation")
     return g
 
+
+def run(N, beta, omega, gamma):
+
+    names = list("SIRD")
+    t = np.arange(0, 366, 7)[:, np.newaxis]
+    y = sird_model(np.ravel(t), N, beta, omega, gamma)
+    data_real = (
+        pd.DataFrame(y, columns=names, index=t.ravel())
+        .rename_axis("time")
+        .reset_index()
+        .melt(id_vars="time", var_name="status", value_name="population")
+    )
+
+    model, variable = dinn(t, y, N)
+    
+    full_t = np.arange(0, 366)[:, np.newaxis]
+    y_pred = model.predict(full_t)
+    data_pred = (
+        pd.DataFrame(y_pred, columns=names, index=full_t.ravel())
+        .rename_axis("time")
+        .reset_index()
+        .melt(id_vars="time", var_name="status", value_name="population")
+    )
+
+    parameters_real = [beta, omega, gamma]
+    parameters_pred = variable.value
+    error_df = error(parameters_real, parameters_pred)
+    fig = plot(data_pred, data_real)
+
+    return error_df, fig
+
+
 if __name__ == "__main__":
     N = 1000
     beta = 0.5
     omega = 1 / 14
     gamma = 1 / 5
-    fig = plot(N, beta, omega, gamma)
+    error_df, fig = run(N, beta, omega, gamma)
     plt.show()
+    print(error_df)
