@@ -24,9 +24,9 @@ with tab_sird:
     """
     )
 
-    col1, col2, col3, col4 = st.columns(4)
+    col11, col12, col13, col14 = st.columns(4)
 
-    N = col1.number_input(
+    N = col11.number_input(
         "N",
         min_value=100,
         max_value=10000,
@@ -36,7 +36,7 @@ with tab_sird:
         help="Population",
     )
 
-    beta = col2.number_input(
+    beta = col12.number_input(
         "Beta",
         min_value=0.001,
         max_value=1.0,
@@ -46,7 +46,7 @@ with tab_sird:
         help="Transmission Rate",
     )
 
-    omega = col3.number_input(
+    omega = col13.number_input(
         "Omega",
         min_value=0.001,
         max_value=1.0,
@@ -56,7 +56,7 @@ with tab_sird:
         help="Rate at which Infected individuals become Recovered",
     )
 
-    gamma = col4.number_input(
+    gamma = col14.number_input(
         r"Gamma$",
         min_value=0.001,
         max_value=1.0,
@@ -66,9 +66,42 @@ with tab_sird:
         help="Rate at which Infected individuals become Dead",
     )
 
+    
+    col21, col22, col23 = st.columns(3)
+
+    iterations = col21.number_input(
+        "Iterations",
+        min_value=1000,
+        max_value=50000,
+        value=10000,
+        step=1000,
+        format=None,
+        help="Training iterations",
+    )
+
+    layers = col22.number_input(
+        "Layers",
+        min_value=1,
+        max_value=10,
+        value=3,
+        step=1,
+        format=None,
+        help="Neural Network hidden layers",
+    )
+
+    neurons = col23.number_input(
+        "Neurons",
+        min_value=8,
+        max_value=256,
+        value=64,
+        step=8,
+        format=None,
+        help="Neurons for each hidden layer",
+    )
+
     if st.button("Run DINN"):
         with st.spinner('Wait for it...'):
-            error_df, fig = run(N, beta, omega, gamma)
+            error_df, fig = run(N, beta, omega, gamma, iterations, layers, neurons)
             st.pyplot(fig)
             st.table(error_df)
 

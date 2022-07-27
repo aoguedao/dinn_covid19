@@ -35,7 +35,7 @@ def sird_model(
     return odeint(func, y0, t)
 
 
-def dinn(data_t, data_y, N):    
+def dinn(data_t, data_y, N, iterations, layers, neurons):    
     
     # Variables
     beta = tf.math.sigmoid(dde.Variable(0.1))
@@ -100,20 +100,14 @@ def dinn(data_t, data_y, N):
         anchors=data_t,
     )
     
-    net = dde.nn.FNN([1] + [128] * 3 + [4], "relu", "Glorot uniform")
+    net = dde.nn.FNN([1] + [neurons] * layers + [4], "relu", "Glorot uniform")
     
     def feature_transform(t):
         t = t / data_t[-1, 0]
         return t
 
-    # def output_transform(t, y):
-    #     # return tf.constant([1, 1, 1e2, 1, 1, 1]) * y
-    #     return tf.abs(y)
-
     net.apply_feature_transform(feature_transform)
-    # net.apply_output_transform(output_transform)
 
-    iterations = 50000
     model = dde.Model(data, net)
     model.compile(
         "adam",
@@ -123,12 +117,11 @@ def dinn(data_t, data_y, N):
     )
     variable = dde.callbacks.VariableValue(
         variable_list,
-        period=5000,
-        filename="variables_sird.dat"
+        period=1000,
     )
     losshistory, train_state = model.train(
         iterations=iterations,
-        display_every=10000,
+        display_every=1000,
         callbacks=[variable]
       )
     # dde.saveplot(losshistory, train_state, issave=True, isplot=True)
@@ -144,13 +137,13 @@ def error(parameters_real, parameters_pred):
     errors = (
         pd.DataFrame(
             {
-                "real": parameters_real,
-                "predicted": parameters_pred
+                "Real": parameters_real,
+                "Predicted": parameters_pred
             },
             index=parameter_names
         )
         .assign(
-            relative_error=lambda x: (x["real"] - x["predicted"]).abs() / x["real"]
+            **{"Relative Error": lambda x: (x["Real"] - x["Predicted"]).abs() / x["Real"]}
         )
     )
     return errors
@@ -188,7 +181,7 @@ def plot(data_pred, data_real):
     return g
 
 
-def run(N, beta, omega, gamma):
+def run(N, beta, omega, gamma, iterations, layers, neurons):
 
     names = list("SIRD")
     t = np.arange(0, 366, 7)[:, np.newaxis]
@@ -200,7 +193,7 @@ def run(N, beta, omega, gamma):
         .melt(id_vars="time", var_name="status", value_name="population")
     )
 
-    model, variable = dinn(t, y, N)
+    model, variable = dinn(t, y, N, iterations, layers, neurons)
     
     full_t = np.arange(0, 366)[:, np.newaxis]
     y_pred = model.predict(full_t)
@@ -224,6 +217,9 @@ if __name__ == "__main__":
     beta = 0.5
     omega = 1 / 14
     gamma = 1 / 5
-    error_df, fig = run(N, beta, omega, gamma)
+    iterations = 50000
+    layers = 3
+    neurons = 64
+    error_df, fig = run(N, beta, omega, gamma, iterations, layers, neurons)
     plt.show()
     print(error_df)
