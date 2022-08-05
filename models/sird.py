@@ -6,6 +6,7 @@ import seaborn as sns
 
 from deepxde.backend import tf
 from scipy.integrate import odeint
+from math import tanh
 
 sns.set_theme(style="darkgrid")
 
@@ -15,10 +16,12 @@ sns.set_theme(style="darkgrid")
 def sird_model(
     t,
     N,
-    beta,
-    omega,
-    gamma,
+    parameters
 ):
+    beta = parameters["beta"]
+    omega = parameters["omega"]
+    gamma = parameters["gamma"]
+
     def func(y, t):
         S, I, R, D = y
         dS = - beta / N * S * I
@@ -33,15 +36,40 @@ def sird_model(
     D_0 = 0
     y0 = [S_0, I_0, R_0, D_0]
     return odeint(func, y0, t)
-
-
-def dinn(data_t, data_y, N, iterations, layers, neurons):    
     
+
+def dinn(
+    data_t,
+    data_y,
+    N,
+    parameters,
+    hyperparameters={
+        "search_range": (0.2, 1.8),
+        "iterations": 30000,
+        "layers": 3,
+        "neurons": 64,
+        "activation": "relu",
+        "loss_weights": None
+    }
+    
+):    
+        
+    def get_variable_in_search_range(nominal , var, search_range):
+        low = nominal * search_range[0]
+        up = nominal * search_range[1]
+        scale = (up - low) / 2
+        tanh_var = tf.tanh(var) if isinstance(var, tf.Variable) else tanh(var)
+        return scale * tanh_var + scale + low
+
     # Variables
-    beta = tf.math.sigmoid(dde.Variable(0.1))
-    omega = tf.math.sigmoid(dde.Variable(0.1))
-    gamma = tf.math.sigmoid(dde.Variable(0.1))
-    variable_list = [beta, omega, gamma]
+    _beta = dde.Variable(0.0)
+    _omega = dde.Variable(0.0)
+    _gamma = dde.Variable(0.0)
+    variables = [
+        _beta,
+        _omega,
+        _gamma,
+    ]
     
     # ODE model
     def ODE(t, y):
@@ -49,7 +77,11 @@ def dinn(data_t, data_y, N, iterations, layers, neurons):
         I = y[:, 1:2]
         R = y[:, 2:3]
         D = y[:, 3:4]
-        
+    
+        beta = get_variable_in_search_range(parameters["beta"], _beta, hyperparameters["search_range"])
+        omega = get_variable_in_search_range(parameters["omega"], _omega, hyperparameters["search_range"])
+        gamma = get_variable_in_search_range(parameters["gamma"], _gamma, hyperparameters["search_range"])
+
         dS_t = dde.grad.jacobian(y, t, i=0)
         dI_t = dde.grad.jacobian(y, t, i=1)
         dR_t = dde.grad.jacobian(y, t, i=2)
@@ -95,12 +127,15 @@ def dinn(data_t, data_y, N, iterations, layers, neurons):
             observe_R,
             observe_D
         ],
-        num_domain=400,
+        num_domain=0,
         num_boundary=2,
         anchors=data_t,
     )
     
-    net = dde.nn.FNN([1] + [neurons] * layers + [4], "relu", "Glorot uniform")
+    neurons = hyperparameters["neurons"]
+    layers = hyperparameters["layers"]
+    activation = hyperparameters["activation"]
+    net = dde.nn.FNN([1] + [neurons] * layers + [4], activation, "Glorot uniform")
     
     def feature_transform(t):
         t = t / data_t[-1, 0]
@@ -112,35 +147,34 @@ def dinn(data_t, data_y, N, iterations, layers, neurons):
     model.compile(
         "adam",
         lr=1e-3,
-        loss_weights=4 * [1] + 4 * [1] + 4 * [1e1],
-        external_trainable_variables=variable_list
+        loss_weights=hyperparameters["loss_weights"],
+        external_trainable_variables=variables
     )
     variable = dde.callbacks.VariableValue(
-        variable_list,
-        period=1000,
+        variables,
+        period=5000,
     )
-    losshistory, train_state = model.train(
-        iterations=iterations,
-        display_every=1000,
+    model.train(
+        iterations=hyperparameters["iterations"],
+        display_every=5000,
         callbacks=[variable]
-      )
-    # dde.saveplot(losshistory, train_state, issave=True, isplot=True)
-    return model, variable
+    )
+
+    parameters_pred = {
+        name: get_variable_in_search_range(nominal, var, hyperparameters["search_range"])
+        for (name, nominal), var in zip(parameters.items(), variable.value)
+    }
+
+    return model, parameters_pred
 
 
-def error(parameters_real, parameters_pred):
-    parameter_names = [
-        "beta",
-        "omega",
-        "gamma",
-    ]
+def error(parameters, parameters_pred):
     errors = (
         pd.DataFrame(
             {
-                "Real": parameters_real,
+                "Real": parameters,
                 "Predicted": parameters_pred
-            },
-            index=parameter_names
+            }
         )
         .assign(
             **{"Relative Error": lambda x: (x["Real"] - x["Predicted"]).abs() / x["Real"]}
@@ -171,55 +205,80 @@ def plot(data_pred, data_real):
 
     (
         g.set_axis_labels("Time", "Population")
-        .set_titles("Zone {row_name}")
         .tight_layout(w_pad=1)
     )
 
     g._legend.set_title("Status")
     g.fig.subplots_adjust(top=0.9)
     g.fig.suptitle(f"SIRD model estimation")
+    plt.savefig("SIRD_estimation.png", dpi=300)
+
     return g
 
 
-def run(N, beta, omega, gamma, iterations, layers, neurons):
+def run(
+    t_train,
+    t_pred,
+    N,
+    parameters,
+    hyperparameters
+):
 
-    names = list("SIRD")
-    t = np.arange(0, 366, 7)[:, np.newaxis]
-    y = sird_model(np.ravel(t), N, beta, omega, gamma)
+    populations_names = ["S", "I", "R", "D"]
+
+
+    y_train = sird_model(np.ravel(t_train), N, parameters)
     data_real = (
-        pd.DataFrame(y, columns=names, index=t.ravel())
+        pd.DataFrame(y_train, columns=populations_names, index=t_train.ravel())
         .rename_axis("time")
         .reset_index()
         .melt(id_vars="time", var_name="status", value_name="population")
     )
 
-    model, variable = dinn(t, y, N, iterations, layers, neurons)
+    model, parameters_pred = dinn(
+        data_t=t_train,
+        data_y=y_train,
+        N=N,
+        parameters=parameters,
+        hyperparameters=hyperparameters
+    )
     
-    full_t = np.arange(0, 366)[:, np.newaxis]
-    y_pred = model.predict(full_t)
+    y_pred = model.predict(t_pred)
     data_pred = (
-        pd.DataFrame(y_pred, columns=names, index=full_t.ravel())
+        pd.DataFrame(y_pred, columns=populations_names, index=t_pred.ravel())
         .rename_axis("time")
         .reset_index()
         .melt(id_vars="time", var_name="status", value_name="population")
     )
 
-    parameters_real = [beta, omega, gamma]
-    parameters_pred = variable.value
-    error_df = error(parameters_real, parameters_pred)
+    error_df = error(parameters, parameters_pred)
     fig = plot(data_pred, data_real)
 
     return error_df, fig
 
 
 if __name__ == "__main__":
-    N = 1000
-    beta = 0.5
-    omega = 1 / 14
-    gamma = 1 / 5
-    iterations = 50000
-    layers = 3
-    neurons = 64
-    error_df, fig = run(N, beta, omega, gamma, iterations, layers, neurons)
-    plt.show()
+    N = 1e6
+    parameters = {
+        "beta": 0.5,
+        "omega": 1 / 14,
+        "gamma": 1 / 5,
+    }
+    hyperparameters = {
+        "search_range": (0.2, 1.8),
+        "iterations": 30000,
+        "layers": 3,
+        "neurons": 64,
+        "activation": "relu",
+        "loss_weights": 4 * [1] + 4 * [1] + 4 * [1],
+    }
+    t_train = np.arange(0, 366, 3)[:, np.newaxis]
+    t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
+    error_df, fig = run(
+        t_train=t_train,
+        t_pred=t_pred,
+        N=N,
+        parameters=parameters,
+        hyperparameters=hyperparameters
+    )
     print(error_df)

@@ -1,3 +1,4 @@
+import numpy as np
 import streamlit as st
 
 from models.sird import run
@@ -57,7 +58,7 @@ with tab_sird:
     )
 
     gamma = col14.number_input(
-        r"Gamma$",
+        "Gamma",
         min_value=0.001,
         max_value=1.0,
         value=1 / 5,
@@ -101,7 +102,28 @@ with tab_sird:
 
     if st.button("Run DINN"):
         with st.spinner('Wait for it...'):
-            error_df, fig = run(N, beta, omega, gamma, iterations, layers, neurons)
+            t_train = np.arange(0, 366, 3)[:, np.newaxis]
+            t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
+            parameters = {
+                "beta": beta,
+                "omega": omega,
+                "gamma": gamma,
+            }
+            hyperparameters = {
+                "search_range": (0.2, 1.8),
+                "iterations": iterations,
+                "layers": layers,
+                "neurons": neurons,
+                "activation": "relu",
+                "loss_weights": 4 * [1] + 4 * [1] + 4 * [1],
+            }
+            error_df, fig = run(
+                t_train=t_train,
+                t_pred=t_pred,
+                N=N,
+                parameters=parameters,
+                hyperparameters=hyperparameters
+            )
             st.pyplot(fig)
             st.table(error_df)
 
