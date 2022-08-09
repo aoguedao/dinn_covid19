@@ -183,7 +183,7 @@ def error(parameters, parameters_pred):
     return errors
 
 
-def plot(data_pred, data_real):
+def plot(data_pred, data_real, filepath):
 
     g = sns.relplot(
         data=data_pred,
@@ -211,8 +211,10 @@ def plot(data_pred, data_real):
     g._legend.set_title("Status")
     g.fig.subplots_adjust(top=0.9)
     g.fig.suptitle(f"SIRD model estimation")
-    plt.savefig("SIRD_estimation.png", dpi=300)
-
+    if filepath is not None:
+        plt.savefig(filepath, dpi=300)
+    else:
+        plt.close()
     return g
 
 
@@ -221,11 +223,11 @@ def run(
     t_pred,
     N,
     parameters,
-    hyperparameters
+    hyperparameters,
+    filepath=None
 ):
 
     populations_names = ["S", "I", "R", "D"]
-
 
     y_train = sird_model(np.ravel(t_train), N, parameters)
     data_real = (
@@ -252,7 +254,7 @@ def run(
     )
 
     error_df = error(parameters, parameters_pred)
-    fig = plot(data_pred, data_real)
+    fig = plot(data_pred, data_real, filepath)
 
     return error_df, fig
 
@@ -279,6 +281,7 @@ if __name__ == "__main__":
         t_pred=t_pred,
         N=N,
         parameters=parameters,
-        hyperparameters=hyperparameters
+        hyperparameters=hyperparameters,
+        filepath=None
     )
     print(error_df)

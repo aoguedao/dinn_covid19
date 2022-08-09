@@ -27,16 +27,20 @@ def sird_transport_model(
     gamma2 = parameters["gamma2"]
     tau12 = parameters["tau12"]
     tau21 = parameters["tau21"]
+    delta12 = parameters["delta12"]
+    delta21 = parameters["delta21"]
+    zeta12 = parameters["zeta12"]
+    zeta21 = parameters["zeta21"]
 
     def func(y, t):
         S1, I1, R1, D1, S2, I2, R2, D2 = y
         return [
-            - beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2,
-            beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2,
+            - beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2 - delta12 / N1 * S1 * I1 - zeta12 / N1 * S1 * I2,
+            beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2 + delta12 / N1 * S1 * I1 + zeta12 / N1 * S1 * I2,
             omega1 * I1 - tau12 * R1 + tau21 * R2,
             gamma1 * I1,
-            - beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1,
-            beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1,
+            - beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1 - delta21 / N2 * S2 * I2 - zeta21 / N2 * S2 * I1,
+            beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1 + delta21 / N2 * S2 * I2 + zeta21 / N2 * S2 * I1,
             omega2 * I2 - tau21 * R2 + tau12 * R1,
             gamma2 * I2
         ]
@@ -86,6 +90,10 @@ def dinn(
     _gamma2 = dde.Variable(0.0)
     _tau12 = dde.Variable(0.0)
     _tau21 = dde.Variable(0.0)
+    _delta12 = dde.Variable(0.0)
+    _delta21 = dde.Variable(0.0)
+    _zeta12 = dde.Variable(0.0)
+    _zeta21 = dde.Variable(0.0)
     variables = [
         _beta1,
         _omega1,
@@ -94,7 +102,11 @@ def dinn(
         _omega2,
         _gamma2,
         _tau12,
-        _tau21
+        _tau21,
+        _delta12,
+        _delta21,
+        _zeta12,
+        _zeta21
     ]
     
     # ODE model
@@ -116,6 +128,10 @@ def dinn(
         gamma2 = get_variable_in_search_range(parameters["gamma2"], _gamma2, hyperparameters["search_range"])
         tau12 = get_variable_in_search_range(parameters["tau12"], _tau12, hyperparameters["search_range"])
         tau21 = get_variable_in_search_range(parameters["tau21"], _tau21, hyperparameters["search_range"])
+        delta12 = get_variable_in_search_range(parameters["delta12"], _delta12, hyperparameters["search_range"])
+        delta21 = get_variable_in_search_range(parameters["delta21"], _delta21, hyperparameters["search_range"])
+        zeta12 = get_variable_in_search_range(parameters["zeta12"], _zeta12, hyperparameters["search_range"])
+        zeta21 = get_variable_in_search_range(parameters["zeta21"], _zeta21, hyperparameters["search_range"])
 
         dS1_t = dde.grad.jacobian(y, t, i=0)
         dI1_t = dde.grad.jacobian(y, t, i=1)
@@ -127,12 +143,12 @@ def dinn(
         dD2_t = dde.grad.jacobian(y, t, i=7)
         
         return [
-            dS1_t - (- beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2),
-            dI1_t - (beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2),
+            dS1_t - (- beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2 - delta12 / N1 * S1 * I1 - zeta12 / N1 * S1 * I2),
+            dI1_t - (beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2 + delta12 / N1 * S1 * I1 + zeta12 / N1 * S1 * I2),
             dR1_t - (omega1 * I1 - tau12 * R1 + tau21 * R2),
             dD1_t - (gamma1 * I1),
-            dS2_t - (- beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1),
-            dI2_t - (beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1),
+            dS2_t - (- beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1 - delta21 / N2 * S2 * I2 - zeta21 / N2 * S2 * I1),
+            dI2_t - (beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1 + delta21 / N2 * S2 * I2 + zeta21 / N2 * S2 * I1),
             dR2_t - (omega2 * I2 - tau21 * R2 + tau12 * R1),
             dD2_t - (gamma2 * I2)
         ]
@@ -275,11 +291,10 @@ def plot(data_pred, data_real, filepath=None):
 
     g._legend.set_title("Status")
     g.fig.subplots_adjust(top=0.9)
-    g.fig.suptitle(f"Estimation SIRD model with transportation between two regions")
+    g.fig.suptitle(f"Estimation SIRD model with transportation and short term cross transmission")
     if filepath is not None:
         plt.savefig(filepath, dpi=300)
-    else:
-        plt.close()
+    plt.close()
     return g
 
 
@@ -294,6 +309,7 @@ def run(
 ):
 
     populations_names = ["S1", "I1", "R1", "D1", "S2", "I2", "R2", "D2"]
+
 
     y_train = sird_transport_model(np.ravel(t_train), N1, N2, parameters)
     data_real = (
@@ -346,6 +362,10 @@ if __name__ == "__main__":
         "gamma2": 0.0294,
         "tau12": 0.02,
         "tau21": 0.01,
+        "delta12": 0.01,
+        "delta21": 0.01,
+        "zeta12": 0.01,
+        "zeta21": 0.01,
     }
     hyperparameters = {
         "search_range": (0.2, 1.8),
