@@ -278,8 +278,7 @@ def plot(data_pred, data_real, filepath=None):
     g.fig.suptitle(f"Estimation SIRD model with transportation between two regions")
     if filepath is not None:
         plt.savefig(filepath, dpi=300)
-    else:
-        plt.close()
+    plt.close()
     return g
 
 
@@ -331,7 +330,7 @@ def run(
     error_df = error(parameters, parameters_pred)
     fig = plot(data_pred, data_real, filepath)
 
-    return error_df, fig
+    return model, error_df, fig
 
 
 if __name__ == "__main__":
@@ -344,7 +343,7 @@ if __name__ == "__main__":
         "beta2": 0.4,
         "omega2": 0.05,
         "gamma2": 0.0294,
-        "tau12": 0.02,
+        "tau12": 0.02,      
         "tau21": 0.01,
     }
     hyperparameters = {
@@ -357,7 +356,7 @@ if __name__ == "__main__":
     }
     t_train = np.arange(0, 366, 3)[:, np.newaxis]
     t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
-    error_df, fig = run(
+    model, error_df, fig = run(
         t_train=t_train,
         t_pred=t_pred,
         N1=N1,

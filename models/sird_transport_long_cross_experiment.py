@@ -4,7 +4,7 @@ from pathlib import Path
 from sklearn.model_selection import ParameterGrid
 
 from utils import grid_experiment
-from sird_transport_long_cross import run
+from sird_transport_long_cross import run, sird_transport_model
 
 
 model_name = "SIRD_TL"
@@ -50,6 +50,7 @@ output_path = Path() / "output" / model_name
 output_path.mkdir(parents=True, exist_ok=True)
 error_grid = grid_experiment(
     run=run,
+    ode_solver=sird_transport_model,
     t_train=t_train,
     t_pred=t_pred,
     N=(N1, N2),

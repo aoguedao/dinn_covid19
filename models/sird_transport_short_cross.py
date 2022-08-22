@@ -310,8 +310,8 @@ def run(
 
     populations_names = ["S1", "I1", "R1", "D1", "S2", "I2", "R2", "D2"]
 
-
     y_train = sird_transport_model(np.ravel(t_train), N1, N2, parameters)
+
     data_real = (
         pd.DataFrame(y_train, columns=populations_names, index=t_train.ravel())
         .rename_axis("time")
@@ -347,7 +347,7 @@ def run(
     error_df = error(parameters, parameters_pred)
     fig = plot(data_pred, data_real, filepath)
 
-    return error_df, fig
+    return model, error_df, fig
 
 
 if __name__ == "__main__":
@@ -369,11 +369,11 @@ if __name__ == "__main__":
     }
     hyperparameters = {
         "search_range": (0.2, 1.8),
-        "iterations": 50000,
-        "layers": 3,
-        "neurons": 128,
+        "iterations": 30000,
+        "layers": 5,
+        "neurons": 64,
         "activation": "relu",
-        "loss_weights": 8 * [1e1] + 8 * [1] + 8 * [1],
+        "loss_weights": 8 * [1] + 8 * [1] + 8 * [1],
     }
     t_train = np.arange(0, 366, 3)[:, np.newaxis]
     t_pred =  np.arange(0, 366, 1)[:, np.newaxis]

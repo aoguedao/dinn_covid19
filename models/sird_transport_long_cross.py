@@ -308,7 +308,7 @@ def plot(data_pred, data_real, filepath=None):
 
     g._legend.set_title("Status")
     g.fig.subplots_adjust(top=0.9)
-    g.fig.suptitle(f"Estimation SIRD model with transportation and short term cross transmission")
+    g.fig.suptitle(f"Estimation SIRD model with transportation and long term cross transmission")
     if filepath is not None:
         plt.savefig(filepath, dpi=300)
     else:
@@ -365,7 +365,7 @@ def run(
     error_df = error(parameters, parameters_pred)
     fig = plot(data_pred, data_real, filepath)
 
-    return error_df, fig
+    return model, error_df, fig
 
 
 if __name__ == "__main__":
