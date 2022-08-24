@@ -29,6 +29,8 @@ t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
 
 hyperparam_grid = ParameterGrid(
     {
+        "time_range": [(0, 366)],
+        "time_step": [1],
         "search_range":[(0.2, 1.8)],
         "iterations":[30000],
         "layers":[3, 5],

@@ -368,6 +368,8 @@ if __name__ == "__main__":
         "zeta21": 0.01,
     }
     hyperparameters = {
+        "time_range": (0, 366),
+        "time_step": 3,
         "search_range": (0.2, 1.8),
         "iterations": 30000,
         "layers": 5,
@@ -375,9 +377,21 @@ if __name__ == "__main__":
         "activation": "relu",
         "loss_weights": 8 * [1] + 8 * [1] + 8 * [1],
     }
-    t_train = np.arange(0, 366, 3)[:, np.newaxis]
-    t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
-    error_df, fig = run(
+    t_train = (
+        np.arange(
+            start=hyperparameters["time_range"][0],
+            stop=hyperparameters["time_range"][1],
+            step=hyperparameters["time_step"]
+        )[:, np.newaxis]
+    )
+    t_pred = (
+        np.arange(
+            start=hyperparameters["time_range"][0],
+            stop=hyperparameters["time_range"][1],
+            step=1
+        )[:, np.newaxis]
+    )
+    model, error_df, fig = run(
         t_train=t_train,
         t_pred=t_pred,
         N1=N1,

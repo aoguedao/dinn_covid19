@@ -2,13 +2,22 @@ import datetime
 import numpy as np
 import pandas as pd
 import deepxde as dde
+import psutil
+
+
+def simulate_data(ode_solver, t, N, parameters):
+    if isinstance(N, tuple) and len(N) == 2:
+        N1, N2 = N
+        y = ode_solver(np.ravel(t), N1, N2, parameters)
+    else:
+        y = ode_solver(np.ravel(t), N, parameters)
+    return y
 
 
 def grid_experiment(
     run,
-    ode_solver,
-    t_train,
     t_pred,
+    ode_solver,
     N,
     parameters,
     hyperparam_grid,
@@ -17,6 +26,8 @@ def grid_experiment(
 
     idx_list = [
         "run",
+        "time_range",
+        "time_step",
         "search_range",
         "iterations",
         "layers",
@@ -42,10 +53,19 @@ def grid_experiment(
     error_dict = {}
     for i, hyperparameters in enumerate(hyperparam_grid, 1):
         print(f"Iteration {i} at {datetime.datetime.now()}")
+        print('RAM memory % used:', psutil.virtual_memory()[2])
         print(hyperparameters)
+
+        t_train = (
+            np.arange(
+                start=hyperparameters["time_range"][0],
+                stop=hyperparameters["time_range"][1],
+                step=hyperparameters["time_step"]
+            )[:, np.newaxis]
+        )
+
         if isinstance(N, tuple) and len(N) == 2:
             N1, N2 = N
-            y_true = ode_solver(np.ravel(t_pred), N1, N2, parameters)
             model, error_df, _ = run(
                 t_train=t_train,
                 t_pred=t_pred,
@@ -56,8 +76,7 @@ def grid_experiment(
                 filepath=output_path / f"{output_path.name}_estimation_run_{i:02d}.png"
             )
         else:
-            y_true = ode_solver(np.ravel(t_pred), N, parameters)
-            error_df, _ = run(
+            model, error_df, _ = run(
                 t_train=t_train,
                 t_pred=t_pred,
                 N=N,
@@ -66,6 +85,7 @@ def grid_experiment(
                 filepath=output_path / f"{output_path.name}_estimation_run_{i:02d}.png"
             )
         y_pred = model.predict(t_pred)
+        y_true = simulate_data(ode_solver, t_pred, N, parameters)
 
         metric_dict[i] = pd.DataFrame(
             {
