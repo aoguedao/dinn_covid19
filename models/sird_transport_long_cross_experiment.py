@@ -7,7 +7,7 @@ from utils import grid_experiment
 from sird_transport_long_cross import run, sird_transport_model
 
 
-model_name = "SIRD_TL"
+model_name = "SIRD_T_L_time2"
 N1 = 1e7
 N2 = 5e6
 parameters = {
@@ -23,16 +23,16 @@ parameters = {
     "delta21": 0.01,
     "zeta12": 0.01,
     "zeta21": 0.01,
-    "delta_hat12": 0.01,
-    "delta_hat21": 0.01,
-    "zeta_hat12": 0.01,
-    "zeta_hat21": 0.01,
+    "delta_hat12": 0.02,
+    "delta_hat21": 0.03,
+    "zeta_hat12": 0.05,
+    "zeta_hat21": 0.04
 }
-t_train = np.arange(0, 366, 3)[:, np.newaxis]
-t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
 
 hyperparam_grid = ParameterGrid(
     {
+        "time_range": [(0, 366)],
+        "time_step": [2],
         "search_range":[(0.2, 1.8)],
         "iterations":[30000],
         "layers":[3, 5],
@@ -48,18 +48,23 @@ hyperparam_grid = ParameterGrid(
 )
 output_path = Path() / "output" / model_name
 output_path.mkdir(parents=True, exist_ok=True)
+t_pred = (
+    np.arange(
+        start=hyperparam_grid[0]["time_range"][0],
+        stop=hyperparam_grid[0]["time_range"][1],
+        step=1
+    )[:, np.newaxis]
+)
 error_grid = grid_experiment(
     run=run,
-    ode_solver=sird_transport_model,
-    t_train=t_train,
     t_pred=t_pred,
+    ode_solver=sird_transport_model,
     N=(N1, N2),
     parameters=parameters,
     hyperparam_grid=hyperparam_grid,
     output_path=output_path
 )
 print(error_grid)
-
 
 
 

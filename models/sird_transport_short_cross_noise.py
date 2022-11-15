@@ -31,21 +31,16 @@ def sird_transport_model(
     delta21 = parameters["delta21"]
     zeta12 = parameters["zeta12"]
     zeta21 = parameters["zeta21"]
-    delta_hat12 = parameters["delta_hat12"]
-    delta_hat21 = parameters["delta_hat21"]
-    zeta_hat12 = parameters["zeta_hat12"]
-    zeta_hat21 = parameters["zeta_hat21"]
-
 
     def func(y, t):
         S1, I1, R1, D1, S2, I2, R2, D2 = y
         return [
-            - beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2 - delta12 / N1 * S1 * I1 - zeta12 / N1 * S1 * I2 - delta_hat12 / N1 * S1 * I1 - zeta_hat12 / N1 * S1 * I2,
-            beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2 + delta12 / N1 * S1 * I1 + zeta12 / N1 * S1 * I2 + delta_hat21 / N2 * S2 * I2 + zeta_hat21 / N2 * S2 * I1,
+            - beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2 - delta12 / N1 * S1 * I1 - zeta12 / N1 * S1 * I2,
+            beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2 + delta12 / N1 * S1 * I1 + zeta12 / N1 * S1 * I2,
             omega1 * I1 - tau12 * R1 + tau21 * R2,
             gamma1 * I1,
-            - beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1 - delta21 / N2 * S2 * I2 - zeta21 / N2 * S2 * I1 - delta_hat21 / N2 * S2 * I2 - zeta_hat21 / N2 * S2 * I1,
-            beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1 + delta21 / N2 * S2 * I2 + zeta21 / N2 * S2 * I1 + delta_hat12 / N1 * S1 * I1 + zeta_hat12 / N1 * S1 * I2,
+            - beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1 - delta21 / N2 * S2 * I2 - zeta21 / N2 * S2 * I1,
+            beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1 + delta21 / N2 * S2 * I2 + zeta21 / N2 * S2 * I1,
             omega2 * I2 - tau21 * R2 + tau12 * R1,
             gamma2 * I2
         ]
@@ -99,10 +94,6 @@ def dinn(
     _delta21 = dde.Variable(0.0)
     _zeta12 = dde.Variable(0.0)
     _zeta21 = dde.Variable(0.0)
-    _delta_hat12 = dde.Variable(0.0)
-    _delta_hat21 = dde.Variable(0.0)
-    _zeta_hat12 = dde.Variable(0.0)
-    _zeta_hat21 = dde.Variable(0.0)
     variables = [
         _beta1,
         _omega1,
@@ -115,11 +106,7 @@ def dinn(
         _delta12,
         _delta21,
         _zeta12,
-        _zeta21,
-        _delta_hat12,
-        _delta_hat21,
-        _zeta_hat12,
-        _zeta_hat21
+        _zeta21
     ]
     
     # ODE model
@@ -145,10 +132,6 @@ def dinn(
         delta21 = get_variable_in_search_range(parameters["delta21"], _delta21, hyperparameters["search_range"])
         zeta12 = get_variable_in_search_range(parameters["zeta12"], _zeta12, hyperparameters["search_range"])
         zeta21 = get_variable_in_search_range(parameters["zeta21"], _zeta21, hyperparameters["search_range"])
-        delta_hat12 = get_variable_in_search_range(parameters["delta_hat12"], _delta_hat12, hyperparameters["search_range"])
-        delta_hat21 = get_variable_in_search_range(parameters["delta_hat21"], _delta_hat21, hyperparameters["search_range"])
-        zeta_hat12 = get_variable_in_search_range(parameters["zeta_hat12"], _zeta_hat12, hyperparameters["search_range"])
-        zeta_hat21 = get_variable_in_search_range(parameters["zeta_hat21"], _zeta_hat21, hyperparameters["search_range"])
 
         dS1_t = dde.grad.jacobian(y, t, i=0)
         dI1_t = dde.grad.jacobian(y, t, i=1)
@@ -160,12 +143,12 @@ def dinn(
         dD2_t = dde.grad.jacobian(y, t, i=7)
         
         return [
-            dS1_t - (- beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2 - delta12 / N1 * S1 * I1 - zeta12 / N1 * S1 * I2 - delta_hat12 / N1 * S1 * I1 - zeta_hat12 / N1 * S1 * I2),
-            dI1_t - (beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2 + delta12 / N1 * S1 * I1 + zeta12 / N1 * S1 * I2 + delta_hat21 / N2 * S2 * I2 + zeta_hat21 / N2 * S2 * I1),
+            dS1_t - (- beta1 / N1 * S1 * I1 - tau12 * S1 + tau21 * S2 - delta12 / N1 * S1 * I1 - zeta12 / N1 * S1 * I2),
+            dI1_t - (beta1 / N1 * S1 * I1 - omega1 * I1 - gamma1 * I1 - tau12 * I1 + tau21 * I2 + delta12 / N1 * S1 * I1 + zeta12 / N1 * S1 * I2),
             dR1_t - (omega1 * I1 - tau12 * R1 + tau21 * R2),
             dD1_t - (gamma1 * I1),
-            dS2_t - (- beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1 - delta21 / N2 * S2 * I2 - zeta21 / N2 * S2 * I1 - delta_hat21 / N2 * S2 * I2 - zeta_hat21 / N2 * S2 * I1),
-            dI2_t - (beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1 + delta21 / N2 * S2 * I2 + zeta21 / N2 * S2 * I1 + delta_hat12 / N1 * S1 * I1 + zeta_hat12 / N1 * S1 * I2),
+            dS2_t - (- beta2 / N2 * S2 * I2 - tau21 * S2 + tau12 * S1 - delta21 / N2 * S2 * I2 - zeta21 / N2 * S2 * I1),
+            dI2_t - (beta2 / N2 * S2 * I2 - omega2 * I2 - gamma2 * I2  - tau21 * I2 + tau12 * I1 + delta21 / N2 * S2 * I2 + zeta21 / N2 * S2 * I1),
             dR2_t - (omega2 * I2 - tau21 * R2 + tau12 * R1),
             dD2_t - (gamma2 * I2)
         ]
@@ -308,11 +291,12 @@ def plot(data_pred, data_real, filepath=None):
 
     g._legend.set_title("Status")
     g.fig.subplots_adjust(top=0.9)
-    g.fig.suptitle(f"Estimation SIRD model with transportation and long term cross transmission")
+    g.fig.suptitle(f"Estimation SIRD model with transportation and short term cross transmission")
     if filepath is not None:
         plt.savefig(filepath, dpi=300)
     plt.close()
     return g
+
 
 def run(
     t_train,
@@ -321,7 +305,8 @@ def run(
     N2,
     parameters,
     hyperparameters,
-    filepath=None
+    filepath=None,
+    noise=None
 ):
 
     populations_names = ["S1", "I1", "R1", "D1", "S2", "I2", "R2", "D2"]
@@ -338,6 +323,8 @@ def run(
             region=lambda x: x["status_region"].str[1],
         )
     )
+    if noise is not None:
+        y_train = y_train + np.random.normal(loc=0, scale=y_train.std(axis=0), size=y_train.shape) * noise
 
     model, parameters_pred = dinn(
         data_t=t_train,
@@ -382,14 +369,8 @@ if __name__ == "__main__":
         "delta21": 0.01,
         "zeta12": 0.01,
         "zeta21": 0.01,
-        "delta_hat12": 0.02,
-        "delta_hat21": 0.03,
-        "zeta_hat12": 0.05,
-        "zeta_hat21": 0.04,
     }
     hyperparameters = {
-        "time_range": (0, 366),
-        "time_step": 3,
         "search_range": (0.2, 1.8),
         "iterations": 30000,
         "layers": 5,
@@ -397,20 +378,9 @@ if __name__ == "__main__":
         "activation": "relu",
         "loss_weights": 8 * [1] + 8 * [1] + 8 * [1],
     }
-    t_train = (
-        np.arange(
-            start=hyperparameters["time_range"][0],
-            stop=hyperparameters["time_range"][1],
-            step=hyperparameters["time_step"]
-        )[:, np.newaxis]
-    )
-    t_pred = (
-        np.arange(
-            start=hyperparameters["time_range"][0],
-            stop=hyperparameters["time_range"][1],
-            step=1
-        )[:, np.newaxis]
-    )
+    noise = None
+    t_train = np.arange(0, 366, 3)[:, np.newaxis]
+    t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
     model, error_df, fig = run(
         t_train=t_train,
         t_pred=t_pred,
@@ -418,6 +388,7 @@ if __name__ == "__main__":
         N2=N2,
         parameters=parameters,
         hyperparameters=hyperparameters,
-        filepath=None
+        filepath="sird_ts_infected_colombia.png",
+        noise=noise
     )
     print(error_df)

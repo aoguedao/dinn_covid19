@@ -7,7 +7,7 @@ from utils import grid_experiment
 from sird_transport_short_cross import run, sird_transport_model
 
 
-model_name = "SIRD_TS"
+model_name = "SIRD_T_S_time1"
 N1 = 1e7
 N2 = 5e6
 parameters = {
@@ -24,8 +24,6 @@ parameters = {
     "zeta12": 0.01,
     "zeta21": 0.01,
 }
-t_train = np.arange(0, 366, 3)[:, np.newaxis]
-t_pred =  np.arange(0, 366, 1)[:, np.newaxis]
 
 hyperparam_grid = ParameterGrid(
     {
@@ -46,22 +44,20 @@ hyperparam_grid = ParameterGrid(
 )
 output_path = Path() / "output" / model_name
 output_path.mkdir(parents=True, exist_ok=True)
+t_pred = (
+    np.arange(
+        start=hyperparam_grid[0]["time_range"][0],
+        stop=hyperparam_grid[0]["time_range"][1],
+        step=1
+    )[:, np.newaxis]
+)
 error_grid = grid_experiment(
     run=run,
-    ode_solver=sird_transport_model,
-    t_train=t_train,
     t_pred=t_pred,
+    ode_solver=sird_transport_model,
     N=(N1, N2),
     parameters=parameters,
     hyperparam_grid=hyperparam_grid,
     output_path=output_path
 )
 print(error_grid)
-
-
-
-
-
-
-
-
